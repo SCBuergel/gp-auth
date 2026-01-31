@@ -11,6 +11,9 @@ const nonceEl = document.getElementById("nonce");
 const tokenEl = document.getElementById("token");
 const logEl = document.getElementById("log");
 const txEl = document.getElementById("tx");
+const domainInput = document.getElementById("domainInput");
+const uriInput = document.getElementById("uriInput");
+const statementInput = document.getElementById("statementInput");
 
 const state = {
   provider: null,
@@ -77,13 +80,17 @@ document.getElementById("signBtn").addEventListener("click", async () => {
     if (!state.signer || !state.address) throw new Error("Connect wallet first.");
     if (!state.nonce) throw new Error("Fetch nonce first.");
 
-    const domain = "something.com";
-    const uri = "https://something.com/";
+    const domain = domainInput.value.trim();
+    const uri = uriInput.value.trim();
+    const statement = statementInput.value.trim();
+    if (!domain) throw new Error("Domain is required.");
+    if (!uri) throw new Error("URI is required.");
+    if (!statement) throw new Error("Statement is required.");
 
     const message = new SiweMessage({
       domain,
       address: state.address,
-      statement: "Sign in with Ethereum to Gnosis Pay",
+      statement,
       uri,
       version: "1",
       chainId: CHAIN_ID,
