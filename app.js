@@ -1,4 +1,5 @@
 import { ethers } from "https://esm.sh/ethers@6.10.0?bundle";
+import { SiweMessage } from "https://esm.sh/siwe@2.3.2?bundle";
 
 console.log("[init] modules loaded");
 
@@ -12,6 +13,7 @@ const logEl = document.getElementById("log");
 const txEl = document.getElementById("tx");
 const ephemeralTokenEl = document.getElementById("ephemeralToken");
 const ephemeralExpiresEl = document.getElementById("ephemeralExpires");
+const psePublicKeyEl = document.getElementById("psePublicKey");
 const pseTokenEl = document.getElementById("pseToken");
 const domainInput = document.getElementById("domainInput");
 const uriInput = document.getElementById("uriInput");
@@ -20,6 +22,9 @@ const nonceInput = document.getElementById("nonceInput");
 const messageInput = document.getElementById("messageInput");
 const signatureInput = document.getElementById("signatureInput");
 const ttlInput = document.getElementById("ttlInput");
+const cardTokenInput = document.getElementById("cardTokenInput");
+const encryptedKeyInput = document.getElementById("encryptedKeyInput");
+const pseAppIdInput = document.getElementById("pseAppIdInput");
 const stepButtons = [
   document.getElementById("connectBtn"),
   document.getElementById("nonceBtn"),
@@ -28,6 +33,8 @@ const stepButtons = [
   document.getElementById("cardsBtn"),
   document.getElementById("pseTokenBtn"),
   document.getElementById("pseBtn"),
+  document.getElementById("publicKeyBtn"),
+  document.getElementById("detailsBtn"),
   document.getElementById("txBtn"),
 ];
 
@@ -53,6 +60,11 @@ const state = {
   message: null,
   signature: null,
   token: null,
+  cardId: null,
+  cardToken: null,
+  pseToken: null,
+  ephemeralToken: null,
+  psePublicKey: null,
 };
 
 const log = (value) => {
@@ -67,16 +79,17 @@ const maskValue = (value) => {
 };
 
 const buildSiweMessage = ({ domain, address, statement, uri, nonce, issuedAt }) => {
-  return (
-    `${domain} wants you to sign in with your Ethereum account:\n` +
-    `${address}\n\n` +
-    `${statement}\n\n` +
-    `URI: ${uri}\n` +
-    `Version: 1\n` +
-    `Chain ID: ${CHAIN_ID}\n` +
-    `Nonce: ${nonce}\n` +
-    `Issued At: ${issuedAt}`
-  );
+  const siwe = new SiweMessage({
+    domain,
+    address,
+    statement,
+    uri,
+    version: "1",
+    chainId: CHAIN_ID,
+    nonce,
+    issuedAt,
+  });
+  return siwe.prepareMessage();
 };
 
 const requireProvider = () => {
@@ -138,6 +151,7 @@ document.getElementById("signBtn").addEventListener("click", async () => {
     const uri = uriInput.value.trim();
     const statement = statementInput.value.trim();
     if (!domain) throw new Error("Domain is required.");
+    if (!uri) throw new Error("URI is required.");
     if (!statement) throw new Error("Statement is required.");
 
     const message = buildSiweMessage({
@@ -207,6 +221,15 @@ document.getElementById("cardsBtn").addEventListener("click", async () => {
     if (!res.ok) throw new Error(`Cards failed: ${res.status}`);
     const json = await res.json();
     console.log("[cards] raw response", json);
+    const items = Array.isArray(json) ? json : json?.items || json?.data || [];
+    if (Array.isArray(items) && items.length > 0) {
+      const first = items[0] || {};
+      state.cardId = first.id || state.cardId;
+      state.cardToken = first.cardToken || state.cardToken;
+      if (cardTokenInput && first.cardToken) {
+        cardTokenInput.value = first.cardToken;
+      }
+    }
     log(json);
   } catch (err) {
     log(err.message || err);
@@ -218,21 +241,27 @@ document.getElementById("pseTokenBtn").addEventListener("click", async () => {
     advanceStep(5);
     if (!state.token) throw new Error("Authenticate first to get a token.");
 
+    const pseAppId = pseAppIdInput?.value.trim();
+    if (!pseAppId) throw new Error("PSE App ID is required.");
     const res = await fetch(`${API_BASE}/pse-public/api/v1/auth/token`, {
+      method: "POST",
       headers: {
         accept: "*/*",
         authorization: `Bearer ${state.token}`,
+        "x-app-id": pseAppId,
       },
     });
     if (!res.ok) throw new Error(`PSE token failed: ${res.status}`);
     const json = await res.json();
     console.log("[pse-token] raw response", json);
     const token =
+      json?.data?.token ||
       json?.token ||
       json?.accessToken ||
       json?.bearerToken ||
       json?.responseObject?.token ||
       "";
+    state.pseToken = token || null;
     pseTokenEl.textContent = maskValue(token);
     log(json);
   } catch (err) {
@@ -243,12 +272,15 @@ document.getElementById("pseTokenBtn").addEventListener("click", async () => {
 document.getElementById("pseBtn").addEventListener("click", async () => {
   try {
     advanceStep(6);
-    const res = await fetch(`${API_BASE}/pse/token`);
+    const res = await fetch(`${API_BASE}/pse/token`, {
+      headers: {},
+    });
     if (!res.ok) throw new Error(`PSE token failed: ${res.status}`);
     const json = await res.json();
     console.log("[pse] raw response", json);
     const token = json?.responseObject?.data?.ephemeralToken || "";
     const expiresAt = json?.responseObject?.data?.expiresAt || "";
+    state.ephemeralToken = token || null;
     ephemeralTokenEl.textContent = maskValue(token);
     ephemeralExpiresEl.textContent = expiresAt || "-";
     log(json);
@@ -257,9 +289,77 @@ document.getElementById("pseBtn").addEventListener("click", async () => {
   }
 });
 
-document.getElementById("txBtn").addEventListener("click", async () => {
+document.getElementById("publicKeyBtn").addEventListener("click", async () => {
   try {
     advanceStep(7);
+    if (!state.pseToken) {
+      throw new Error("Fetch PSE token (step 6) first.");
+    }
+    const cardToken = cardTokenInput?.value.trim() || state.cardToken;
+    if (!cardToken) {
+      throw new Error("Card token is required (step 5 or override).");
+    }
+    const pseAppId = pseAppIdInput?.value.trim();
+    if (!pseAppId) throw new Error("PSE App ID is required.");
+    const keyRes = await fetch(
+      `${API_BASE}/pse-public/api/v1/cards/${cardToken}/public-key`,
+      {
+        headers: {
+          accept: "*/*",
+          authorization: `Bearer ${state.pseToken}`,
+          "x-app-id": pseAppId,
+        },
+      }
+    );
+    if (!keyRes.ok) throw new Error(`Public key failed: ${keyRes.status}`);
+    const keyJson = await keyRes.json();
+    console.log("[pse-public-key] raw response", keyJson);
+    const publicKey = keyJson?.data?.publicKey || "";
+    state.psePublicKey = publicKey || null;
+    psePublicKeyEl.textContent = publicKey ? maskValue(publicKey) : "-";
+    log(keyJson);
+  } catch (err) {
+    log(err.message || err);
+  }
+});
+
+document.getElementById("detailsBtn").addEventListener("click", async () => {
+  try {
+    advanceStep(8);
+    if (!state.pseToken) throw new Error("Fetch PSE token (step 6) first.");
+    if (!state.ephemeralToken) throw new Error("Fetch ephemeral token (step 7) first.");
+    if (!state.psePublicKey) throw new Error("Fetch public key (step 8) first.");
+    const cardToken = cardTokenInput?.value.trim() || state.cardToken;
+    if (!cardToken) {
+      throw new Error("Card token is required (step 5 or override).");
+    }
+    const encryptedKey = encryptedKeyInput?.value.trim();
+    if (!encryptedKey) throw new Error("Encrypted key is required.");
+    const pseAppId = pseAppIdInput?.value.trim();
+    if (!pseAppId) throw new Error("PSE App ID is required.");
+
+    const detailsUrl = `${API_BASE}/pse-public/api/v1/cards/${cardToken}/details` +
+      `?ephemeralToken=${encodeURIComponent(state.ephemeralToken)}` +
+      `&encryptedKey=${encodeURIComponent(encryptedKey)}`;
+    const res = await fetch(detailsUrl, {
+      headers: {
+        accept: "*/*",
+        authorization: `Bearer ${state.pseToken}`,
+        "x-app-id": pseAppId,
+      },
+    });
+    if (!res.ok) throw new Error(`Card details failed: ${res.status}`);
+    const json = await res.json();
+    console.log("[card-details] raw response", json);
+    log(json);
+  } catch (err) {
+    log(err.message || err);
+  }
+});
+
+document.getElementById("txBtn").addEventListener("click", async () => {
+  try {
+    advanceStep(9);
     if (!state.token) throw new Error("Authenticate first to get a token.");
 
     const limit = 25;

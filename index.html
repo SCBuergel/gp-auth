@@ -104,7 +104,9 @@
           <button id="cardsBtn">5) Fetch Cards</button>
           <button id="pseTokenBtn">6) Fetch PSE Token</button>
           <button id="pseBtn">7) Fetch PSE Ephemeral Token</button>
-          <button id="txBtn">8) Fetch Transactions</button>
+          <button id="publicKeyBtn">8) Fetch PSE Public Key</button>
+          <button id="detailsBtn">9) Fetch Card Details</button>
+          <button id="txBtn">10) Fetch Transactions</button>
         </div>
 
         <div class="section-title"><strong>Read-only outputs</strong></div>
@@ -146,6 +148,11 @@
               <td>PSE Expires At</td>
               <td>7</td>
               <td><span id="ephemeralExpires">-</span></td>
+            </tr>
+            <tr>
+              <td>PSE Public Key</td>
+              <td>8</td>
+              <td><span id="psePublicKey" class="muted">-</span></td>
             </tr>
           </tbody>
         </table>
@@ -201,6 +208,33 @@
                 <td>TTL seconds (override)</td>
                 <td>4</td>
                 <td><input id="ttlInput" type="number" value="36000" /></td>
+              </tr>
+              <tr>
+                <td>Card Token (override)</td>
+                <td>5, 9</td>
+                <td><input id="cardTokenInput" type="text" value="" /></td>
+              </tr>
+              <tr>
+                <td>Encrypted Key (override)</td>
+                <td>9</td>
+                <td>
+                  <input
+                    id="encryptedKeyInput"
+                    type="text"
+                    value="PExKDcKvSaiVlfhGGJaBpv8dmRkIDITUkpnjibLxqbqt6cz44Wp1qhUEGDYUb0WyROxXpeIjfYjMyhhS7dIhVDVXmGlKhMu6MaNAluck0yDuPYIhs4JabAjd4C6tiWbo36iCugOVHJ1bGQ50Fl1ecUkwHWMhX4HT4Y20YQPT2iw%3D"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>PSE App ID (override)</td>
+                <td>6</td>
+                <td>
+                  <input
+                    id="pseAppIdInput"
+                    type="text"
+                    value="gp_a1b2c3d4e5f678901234567890123456"
+                  />
+                </td>
               </tr>
             </tbody>
           </table>
