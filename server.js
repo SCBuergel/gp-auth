@@ -4,6 +4,8 @@ import { extname, join } from "node:path";
 
 const PORT = 8080;
 const API_HOST = "https://api.gnosispay.com";
+const PSE_HOST = "https://pse-backend.v2.gnosispay.com";
+const PSE_PUBLIC_HOST = "https://api-pse-public.gnosispay.com";
 
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -22,8 +24,18 @@ const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
-    if (url.pathname.startsWith("/api/")) {
-      const targetUrl = `${API_HOST}${url.pathname}${url.search}`;
+    if (
+      url.pathname.startsWith("/api/") ||
+      url.pathname.startsWith("/pse/") ||
+      url.pathname.startsWith("/pse-public/")
+    ) {
+      const isPse = url.pathname.startsWith("/pse/");
+      const isPsePublic = url.pathname.startsWith("/pse-public/");
+      const targetUrl = isPse
+        ? `${PSE_HOST}${url.pathname.replace("/pse", "")}${url.search}`
+        : isPsePublic
+          ? `${PSE_PUBLIC_HOST}${url.pathname.replace("/pse-public", "")}${url.search}`
+          : `${API_HOST}${url.pathname}${url.search}`;
       console.log("[proxy] request", req.method, targetUrl);
 
       const headers = { ...req.headers };

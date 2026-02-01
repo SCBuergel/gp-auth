@@ -8,16 +8,70 @@
       body {
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
         margin: 24px;
-        max-width: 900px;
-      }
-      button {
-        margin-right: 8px;
-        margin-bottom: 8px;
       }
       pre {
         background: #f6f8fa;
         padding: 12px;
         overflow: auto;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        align-items: start;
+      }
+      .panel {
+        border: 1px solid #ddd;
+        padding: 16px;
+        border-radius: 8px;
+      }
+      .explainer {
+        margin-bottom: 12px;
+      }
+      .disclaimer {
+        background: #fff3cd;
+        border: 1px solid #ffec99;
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+      }
+      .stack button {
+        display: block;
+        width: 100%;
+        margin: 0 0 8px 0;
+      }
+      .step-active {
+        font-weight: 700;
+      }
+      .field {
+        margin-bottom: 12px;
+      }
+      .field label {
+        display: block;
+        margin-bottom: 4px;
+      }
+      textarea,
+      input[type="text"],
+      input[type="number"] {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        border: 1px solid #e5e5e5;
+        padding: 8px;
+        vertical-align: top;
+      }
+      th {
+        background: #f6f8fa;
+        text-align: left;
+      }
+      .section-title {
+        margin: 16px 0 8px;
       }
       .row {
         margin: 12px 0;
@@ -28,68 +82,142 @@
     </style>
   </head>
   <body>
-    <h1>GnosisPay SIWE Minimal Demo</h1>
+    <h1>GnosisPay Authentication Demo</h1>
 
-    <div class="row">
-      <button id="connectBtn">1) Connect Wallet</button>
-      <button id="nonceBtn">2) Fetch Nonce</button>
-      <button id="signBtn">3) Sign SIWE</button>
-      <button id="authBtn">4) Gnosis Pay Login</button>
-      <button id="txBtn">5) Fetch Transactions</button>
+    <div class="disclaimer">
+      <strong>WARNING:</strong> This UI is for educational and security
+      research purposes only. Do not use it with production user data or cards.
+      No guarantees are made regarding correctness or security. Use at your own risk.
     </div>
 
-    <div class="row">
-      <div><strong>Address:</strong> <span id="address">-</span></div>
-      <div><strong>Nonce:</strong> <span id="nonce">-</span></div>
-      <div><strong>Token:</strong> <span id="token" class="muted">-</span></div>
-    </div>
+    <div class="layout">
+      <div class="panel">
+        <div class="explainer">
+          Click each step in order to complete the flow. Each action prepares the
+          next step, so proceed top to bottom.
+        </div>
+        <div class="row stack">
+          <button id="connectBtn">1) Connect Wallet</button>
+          <button id="nonceBtn">2) Fetch Nonce</button>
+          <button id="signBtn">3) Sign SIWE</button>
+          <button id="authBtn">4) Gnosis Pay Login</button>
+          <button id="cardsBtn">5) Fetch Cards</button>
+          <button id="pseTokenBtn">6) Fetch PSE Token</button>
+          <button id="pseBtn">7) Fetch PSE Ephemeral Token</button>
+          <button id="txBtn">8) Fetch Transactions</button>
+        </div>
 
-    <div class="row">
-      <div>
-        <label for="domainInput"><strong>Domain:</strong></label>
-        <input id="domainInput" type="text" value="canihazauth.info" />
-      </div>
-      <div>
-        <label for="uriInput"><strong>URI:</strong></label>
-        <input id="uriInput" type="text" value="https://canihazauth.com" />
-      </div>
-      <div>
-        <label for="statementInput"><strong>Statement:</strong></label>
-        <input
-          id="statementInput"
-          type="text"
-          value="Sign in with a totally legit wallet to CAN I HAZ AUTH!!!??!?!?"
-        />
-      </div>
-      <div>
-        <label for="nonceInput"><strong>Nonce (override):</strong></label>
-        <input id="nonceInput" type="text" value="000" />
-      </div>
-    </div>
+        <div class="section-title"><strong>Read-only outputs</strong></div>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Step(s)</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Address</td>
+              <td>1</td>
+              <td><span id="address">-</span></td>
+            </tr>
+            <tr>
+              <td>Nonce (fetched)</td>
+              <td>2</td>
+              <td><span id="nonce">-</span></td>
+            </tr>
+            <tr>
+              <td>Token</td>
+              <td>4</td>
+              <td><span id="token" class="muted">-</span></td>
+            </tr>
+            <tr>
+              <td>PSE Token</td>
+              <td>6</td>
+              <td><span id="pseToken" class="muted">-</span></td>
+            </tr>
+            <tr>
+              <td>PSE Ephemeral Token</td>
+              <td>7</td>
+              <td><span id="ephemeralToken" class="muted">-</span></td>
+            </tr>
+            <tr>
+              <td>PSE Expires At</td>
+              <td>7</td>
+              <td><span id="ephemeralExpires">-</span></td>
+            </tr>
+          </tbody>
+        </table>
 
-    <div class="row">
-      <strong>Logs</strong>
-      <pre id="log"></pre>
-    </div>
+        <div class="row">
+          <div class="section-title"><strong>Overrides</strong></div>
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Step(s)</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Domain</td>
+                <td>3</td>
+                <td><input id="domainInput" type="text" value="canihazauth.info" /></td>
+              </tr>
+              <tr>
+                <td>URI</td>
+                <td>3</td>
+                <td><input id="uriInput" type="text" value="https://canihazauth.com" /></td>
+              </tr>
+              <tr>
+                <td>Statement</td>
+                <td>3</td>
+                <td>
+                  <input
+                    id="statementInput"
+                    type="text"
+                    value="Sign in with a totally legit wallet to CAN I HAZ AUTH!!!??!?!?"
+                  />
+                </td>
+              </tr>
+              <tr>
+                <td>Nonce (override)</td>
+                <td>2, 3</td>
+                <td><input id="nonceInput" type="text" value="000" /></td>
+              </tr>
+              <tr>
+                <td>Login Message (override)</td>
+                <td>3, 4</td>
+                <td><textarea id="messageInput" rows="4"></textarea></td>
+              </tr>
+              <tr>
+                <td>Login Signature (override)</td>
+                <td>3, 4</td>
+                <td><textarea id="signatureInput" rows="2"></textarea></td>
+              </tr>
+              <tr>
+                <td>TTL seconds (override)</td>
+                <td>4</td>
+                <td><input id="ttlInput" type="number" value="36000" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-    <div class="row">
-      <div>
-        <label for="messageInput"><strong>Login Message (override):</strong></label>
-        <textarea id="messageInput" rows="4" cols="80"></textarea>
-      </div>
-      <div>
-        <label for="signatureInput"><strong>Login Signature (override):</strong></label>
-        <textarea id="signatureInput" rows="2" cols="80"></textarea>
-      </div>
-      <div>
-        <label for="ttlInput"><strong>TTL seconds (override):</strong></label>
-        <input id="ttlInput" type="number" value="36000" />
-      </div>
-    </div>
+      <div class="panel">
+        <div class="row">
+          <strong>Logs</strong>
+          <pre id="log"></pre>
+        </div>
 
-    <div class="row">
-      <strong>Transactions</strong>
-      <pre id="tx"></pre>
+        <div class="row">
+          <strong>Transactions</strong>
+          <pre id="tx"></pre>
+        </div>
+      </div>
     </div>
 
     <script type="module" src="./app.js"></script>
