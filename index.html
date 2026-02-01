@@ -61,11 +61,30 @@
           value="Sign in with a totally legit wallet to CAN I HAZ AUTH!!!??!?!?"
         />
       </div>
+      <div>
+        <label for="nonceInput"><strong>Nonce (override):</strong></label>
+        <input id="nonceInput" type="text" value="000" />
+      </div>
     </div>
 
     <div class="row">
       <strong>Logs</strong>
       <pre id="log"></pre>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="messageInput"><strong>Login Message (override):</strong></label>
+        <textarea id="messageInput" rows="4" cols="80"></textarea>
+      </div>
+      <div>
+        <label for="signatureInput"><strong>Login Signature (override):</strong></label>
+        <textarea id="signatureInput" rows="2" cols="80"></textarea>
+      </div>
+      <div>
+        <label for="ttlInput"><strong>TTL seconds (override):</strong></label>
+        <input id="ttlInput" type="number" value="36000" />
+      </div>
     </div>
 
     <div class="row">

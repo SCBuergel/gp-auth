@@ -14,6 +14,10 @@ const txEl = document.getElementById("tx");
 const domainInput = document.getElementById("domainInput");
 const uriInput = document.getElementById("uriInput");
 const statementInput = document.getElementById("statementInput");
+const nonceInput = document.getElementById("nonceInput");
+const messageInput = document.getElementById("messageInput");
+const signatureInput = document.getElementById("signatureInput");
+const ttlInput = document.getElementById("ttlInput");
 
 const state = {
   provider: null,
@@ -69,6 +73,7 @@ document.getElementById("nonceBtn").addEventListener("click", async () => {
     const nonce = (await res.text()).trim();
     state.nonce = nonce;
     nonceEl.textContent = nonce;
+    nonceInput.value = nonce;
     log({ nonce });
   } catch (err) {
     log(err.message || err);
@@ -78,7 +83,8 @@ document.getElementById("nonceBtn").addEventListener("click", async () => {
 document.getElementById("signBtn").addEventListener("click", async () => {
   try {
     if (!state.signer || !state.address) throw new Error("Connect wallet first.");
-    if (!state.nonce) throw new Error("Fetch nonce first.");
+    const nonce = nonceInput.value.trim();
+    if (!nonce) throw new Error("Nonce is required.");
 
     const domain = domainInput.value.trim();
     const uri = uriInput.value.trim();
@@ -94,13 +100,15 @@ document.getElementById("signBtn").addEventListener("click", async () => {
       uri,
       version: "1",
       chainId: CHAIN_ID,
-      nonce: state.nonce,
+      nonce,
       issuedAt: new Date().toISOString(),
     }).prepareMessage();
 
     const signature = await state.signer.signMessage(message);
     state.message = message;
     state.signature = signature;
+    messageInput.value = message;
+    signatureInput.value = signature;
     console.log("[siwe] message", message);
     console.log("[siwe] signature", signature);
     log({ message, signature });
@@ -111,15 +119,22 @@ document.getElementById("signBtn").addEventListener("click", async () => {
 
 document.getElementById("authBtn").addEventListener("click", async () => {
   try {
-    if (!state.message || !state.signature) throw new Error("Sign SIWE first.");
+    const message = messageInput.value.trim() || state.message;
+    const signature = signatureInput.value.trim() || state.signature;
+    const ttlValue = ttlInput.value.trim();
+    const ttlInSeconds = ttlValue ? Number(ttlValue) : 36000;
+    if (!message || !signature) throw new Error("Sign SIWE first.");
+    if (!Number.isFinite(ttlInSeconds) || ttlInSeconds <= 0) {
+      throw new Error("TTL must be a positive number.");
+    }
 
     const res = await fetch(`${API_BASE}/api/v1/auth/challenge`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        message: state.message,
-        signature: state.signature,
-        ttlInSeconds: 36000,
+        message,
+        signature,
+        ttlInSeconds,
       }),
     });
     if (!res.ok) throw new Error(`Auth failed: ${res.status}`);
