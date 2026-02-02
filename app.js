@@ -18,6 +18,7 @@ const pseTokenEl = document.getElementById("pseToken");
 const domainInput = document.getElementById("domainInput");
 const uriInput = document.getElementById("uriInput");
 const statementInput = document.getElementById("statementInput");
+const useSiweLibInput = document.getElementById("useSiweLibInput");
 const nonceInput = document.getElementById("nonceInput");
 const messageInput = document.getElementById("messageInput");
 const signatureInput = document.getElementById("signatureInput");
@@ -92,6 +93,26 @@ const buildSiweMessage = ({ domain, address, statement, uri, nonce, issuedAt }) 
   return siwe.prepareMessage();
 };
 
+const buildSiweMessageVanilla = ({
+  domain,
+  address,
+  statement,
+  uri,
+  nonce,
+  issuedAt,
+}) => {
+  const header = ` ${domain} wants you to sign in with your Ethereum account:\n${address}`;
+  const statementBlock = statement ? `\n\n${statement}` : "";
+  const fields = [
+    `URI: ${uri}`,
+    "Version: 1",
+    `Chain ID: ${CHAIN_ID}`,
+    `Nonce: ${nonce}`,
+    `Issued At: ${issuedAt}`,
+  ];
+  return `${header}${statementBlock}\n\n${fields.join("\n")}`;
+};
+
 const requireProvider = () => {
   if (!window.ethereum) {
     throw new Error("No injected wallet found. Install MetaMask or a compatible wallet.");
@@ -154,23 +175,28 @@ document.getElementById("signBtn").addEventListener("click", async () => {
     if (!uri) throw new Error("URI is required.");
     if (!statement) throw new Error("Statement is required.");
 
-    const message = buildSiweMessage({
+    const issuedAt = new Date().toISOString();
+    const messagePayload = {
       domain,
       address: state.address,
       statement,
       uri,
       nonce,
-      issuedAt: new Date().toISOString(),
-    });
+      issuedAt,
+    };
+    const useSiweLib = useSiweLibInput ? useSiweLibInput.checked : true;
+    const messageToSign = useSiweLib
+      ? buildSiweMessage(messagePayload)
+      : buildSiweMessageVanilla(messagePayload);
 
-    const signature = await state.signer.signMessage(message);
-    state.message = message;
+    const signature = await state.signer.signMessage(messageToSign);
+    state.message = messageToSign;
     state.signature = signature;
-    messageInput.value = message;
+    messageInput.value = messageToSign;
     signatureInput.value = signature;
-    console.log("[siwe] message", message);
+    console.log("[siwe] message", messageToSign);
     console.log("[siwe] signature", signature);
-    log({ message, signature });
+    log({ message: messageToSign, signature });
   } catch (err) {
     log(err.message || err);
   }
