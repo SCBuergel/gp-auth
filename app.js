@@ -101,7 +101,7 @@ const buildSiweMessageVanilla = ({
   nonce,
   issuedAt,
 }) => {
-  const header = ` ${domain} wants you to sign in with your Ethereum account:\n${address}`;
+  const header = `${domain} wants you to sign in with your Ethereum account:\n${address}`;
   const statementBlock = statement ? `\n\n${statement}` : "";
   const fields = [
     `URI: ${uri}`,
@@ -112,6 +112,40 @@ const buildSiweMessageVanilla = ({
   ];
   return `${header}${statementBlock}\n\n${fields.join("\n")}`;
 };
+
+const DEFAULT_ADDRESS = "0x0000000000000000000000000000000000000000";
+let messageInputTouched = false;
+
+if (messageInput) {
+  messageInput.addEventListener("input", () => {
+    messageInputTouched = true;
+  });
+}
+
+const buildDefaultLoginMessage = () => {
+  const domain = domainInput?.value.trim() || "";
+  const uri = uriInput?.value.trim() || "";
+  const statement = statementInput?.value.trim() || "";
+  const nonce = nonceInput?.value.trim() || state.nonce || "000";
+  const issuedAt = new Date().toISOString();
+  const address = state.address || DEFAULT_ADDRESS;
+
+  return buildSiweMessageVanilla({
+    domain,
+    address,
+    statement,
+    uri,
+    nonce,
+    issuedAt,
+  });
+};
+
+const populateLoginMessage = () => {
+  if (!messageInput || messageInputTouched) return;
+  messageInput.value = buildDefaultLoginMessage();
+};
+
+populateLoginMessage();
 
 const requireProvider = () => {
   if (!window.ethereum) {
@@ -139,6 +173,7 @@ document.getElementById("connectBtn").addEventListener("click", async () => {
     console.log("[connect] address", state.address);
 
     addressEl.textContent = state.address;
+    populateLoginMessage();
     log("Wallet connected.");
   } catch (err) {
     console.error("[connect] error", err);
@@ -155,6 +190,7 @@ document.getElementById("nonceBtn").addEventListener("click", async () => {
     state.nonce = nonce;
     nonceEl.textContent = nonce;
     nonceInput.value = nonce;
+    populateLoginMessage();
     log({ nonce });
   } catch (err) {
     log(err.message || err);
@@ -187,7 +223,10 @@ document.getElementById("signBtn").addEventListener("click", async () => {
     const useSiweLib = useSiweLibInput ? useSiweLibInput.checked : true;
     const messageToSign = useSiweLib
       ? buildSiweMessage(messagePayload)
-      : buildSiweMessageVanilla(messagePayload);
+      : messageInput.value.trim();
+    if (!messageToSign) {
+      throw new Error("Login Message (override) is required when not using SIWE.");
+    }
 
     const signature = await state.signer.signMessage(messageToSign);
     state.message = messageToSign;
